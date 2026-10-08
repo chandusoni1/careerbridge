@@ -14,6 +14,10 @@ const cors = require('cors');
 
 const app = express();
 
+app.get('/',(req,res)=>{
+  res.json({message:"backend is working"});
+});
+
 ~
 
 // Middlewares
