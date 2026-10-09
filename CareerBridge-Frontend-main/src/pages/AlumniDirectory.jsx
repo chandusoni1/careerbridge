@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apibase } from '../config';
 
 const AlumniDirectory = () => {
   const [dbUsers, setDbUsers] = useState([]);
@@ -6,7 +7,7 @@ const AlumniDirectory = () => {
   const [selectedBranch, setSelectedBranch] = useState("All");
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/auth/users')
+    fetch(`${apibase}/auth/users`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setDbUsers(data);
