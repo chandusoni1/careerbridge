@@ -1,0 +1,1 @@
+export const apibase = import.meta.env.VITE_BACKEND_URL

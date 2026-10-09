@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apibase } from '../config';
 
 const Dashboard = () => {
   const [users, setUsers] = useState([]);
@@ -8,7 +9,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://careerbridge-backend-1bd5.onrender.com/api/auth/users');
+        const response = await fetch(`${apibase}/auth/users`);
         const data = await response.json();
         setUsers(data);
       } catch (error) {

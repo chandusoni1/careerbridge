@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { apibase } from '../config';
 
 const Signup = () => {
   const [formData, setFormData] = useState({ 
@@ -20,7 +21,7 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-       const response = await fetch('http://localhost:5000/api/auth/signup', {
+       const response = await fetch(`${apibase}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
