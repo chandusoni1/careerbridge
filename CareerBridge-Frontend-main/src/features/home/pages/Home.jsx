@@ -76,12 +76,12 @@ export const Home = ({ user }) => {
     try {
       const mediaList = selectedFile
         ? [
-            {
-              url: selectedFile.dataUrl,
-              type: selectedFile.type,
-              name: selectedFile.name,
-            },
-          ]
+          {
+            url: selectedFile.dataUrl,
+            type: selectedFile.type,
+            name: selectedFile.name,
+          },
+        ]
         : [];
 
       // Extract hashtags
@@ -151,9 +151,9 @@ export const Home = ({ user }) => {
         prev.map((p) =>
           p._id === postId
             ? {
-                ...p,
-                comments: p.comments.filter((c) => c._id !== commentId),
-              }
+              ...p,
+              comments: p.comments.filter((c) => c._id !== commentId),
+            }
             : p
         )
       );
@@ -234,11 +234,10 @@ export const Home = ({ user }) => {
               <button
                 key={tag}
                 onClick={() => setSelectedTag(tag === 'All' ? '' : tag)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                  (tag === 'All' && !selectedTag) || selectedTag === tag
-                    ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                }`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${(tag === 'All' && !selectedTag) || selectedTag === tag
+                  ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400'
+                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
               >
                 #{tag}
               </button>
@@ -387,8 +386,7 @@ export const Home = ({ user }) => {
                         </div>
                         <div className="text-xs text-slate-400 font-medium">
                           {post.author?.headline ||
-                            `${post.author?.role === 'alumni' ? 'Alumni' : 'Student'} • ${
-                              post.author?.company || post.author?.branch || 'CareerBridge'
+                            `${post.author?.role === 'alumni' ? 'Alumni' : 'Student'} • ${post.author?.company || post.author?.branch || 'CareerBridge'
                             }`}
                         </div>
                       </div>
@@ -471,11 +469,10 @@ export const Home = ({ user }) => {
                   <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs font-bold text-slate-400">
                     <button
                       onClick={() => handleLike(post._id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition cursor-pointer ${
-                        isLiked
-                          ? 'text-rose-400 bg-rose-500/10'
-                          : 'hover:text-cyan-400 hover:bg-slate-800'
-                      }`}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition cursor-pointer ${isLiked
+                        ? 'text-rose-400 bg-rose-500/10'
+                        : 'hover:text-cyan-400 hover:bg-slate-800'
+                        }`}
                     >
                       {isLiked ? '❤️' : '🤍'} {post.likes?.length || 0} Likes
                     </button>

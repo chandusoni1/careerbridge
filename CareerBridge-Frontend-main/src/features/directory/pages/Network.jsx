@@ -115,41 +115,37 @@ export const Network = ({ user }) => {
       <div className="flex gap-2 border-b border-slate-800 pb-3 overflow-x-auto text-xs font-extrabold">
         <button
           onClick={() => setActiveTab('connections')}
-          className={`px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'connections'
-              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap ${activeTab === 'connections'
+            ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+            : 'bg-slate-900 text-slate-400 hover:text-white'
+            }`}
         >
           My Connections ({data.connections.length})
         </button>
         <button
           onClick={() => setActiveTab('received')}
-          className={`px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'received'
-              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap ${activeTab === 'received'
+            ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+            : 'bg-slate-900 text-slate-400 hover:text-white'
+            }`}
         >
           Received Requests ({data.receivedRequests.length})
         </button>
         <button
           onClick={() => setActiveTab('sent')}
-          className={`px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'sent'
-              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap ${activeTab === 'sent'
+            ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+            : 'bg-slate-900 text-slate-400 hover:text-white'
+            }`}
         >
           Sent Requests ({data.sentRequests.length})
         </button>
         <button
           onClick={() => setActiveTab('suggestions')}
-          className={`px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap ${
-            activeTab === 'suggestions'
-              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-              : 'bg-slate-900 text-slate-400 hover:text-white'
-          }`}
+          className={`px-4 py-2 rounded-xl transition cursor-pointer whitespace-nowrap ${activeTab === 'suggestions'
+            ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
+            : 'bg-slate-900 text-slate-400 hover:text-white'
+            }`}
         >
           Suggested ({data.suggestions.length})
         </button>
