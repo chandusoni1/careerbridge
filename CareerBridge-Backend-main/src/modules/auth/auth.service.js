@@ -43,6 +43,19 @@ const signupUser = async (userData) => {
     company,
     companyLocation,
     jobRole,
+    verificationStatus:
+      role === 'student' || role === 'alumni' ? 'under_review' : 'verified',
+    collegeIdCard: userData.collegeIdCard
+      ? {
+          url:
+            typeof userData.collegeIdCard === 'string'
+              ? userData.collegeIdCard
+              : userData.collegeIdCard.dataUrl || userData.collegeIdCard.url || '',
+          name: userData.collegeIdCard.name || 'College ID',
+          format: userData.collegeIdCard.type || userData.collegeIdCard.format || 'document',
+          uploadedAt: new Date(),
+        }
+      : undefined,
     headline:
       role === 'alumni' && company
         ? `${jobRole || 'Professional'} at ${company}`

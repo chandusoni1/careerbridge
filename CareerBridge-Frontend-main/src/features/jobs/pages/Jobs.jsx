@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { jobsApi } from '../jobs.api';
 import { LoadingSpinner, EmptyState } from '../../../components/feedback';
 
 export const Jobs = ({ user }) => {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +106,23 @@ export const Jobs = ({ user }) => {
     } catch (err) {
       console.error('Failed to bookmark job:', err);
     }
+  };
+
+  const handleMessagePoster = (poster) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    const posterId = poster?._id || poster;
+    if (!posterId) {
+      alert('Poster contact details not available.');
+      return;
+    }
+    if (posterId === user._id) {
+      alert('You are the poster of this opportunity.');
+      return;
+    }
+    navigate(`/messages?userId=${posterId}`);
   };
 
   const isAlumni = user?.role === 'alumni' || user?.role === 'admin';
@@ -277,29 +296,40 @@ export const Jobs = ({ user }) => {
                     Posted by: <strong className="text-slate-400">{j.postedBy?.name || 'Alumni'}</strong>
                   </span>
 
-                  <div className="flex gap-2">
-                    {j.applicationUrl && (
-                      <a
-                        href={j.applicationUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl"
+                    <div className="flex flex-wrap items-center gap-2">
+                      {j.postedBy && (
+                        <button
+                          type="button"
+                          onClick={() => handleMessagePoster(j.postedBy)}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500/40 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                          title="Direct message recruiter or alumni poster"
+                        >
+                          <span>💬</span>
+                          <span>Message</span>
+                        </button>
+                      )}
+                      {j.applicationUrl && (
+                        <a
+                          href={j.applicationUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl"
+                        >
+                          Apply Link ↗
+                        </a>
+                      )}
+                      <button
+                        onClick={() => handleApply(j._id)}
+                        disabled={hasApplied}
+                        className={`px-4 py-1.5 rounded-xl font-bold text-xs transition ${
+                          hasApplied
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-default'
+                            : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
+                        }`}
                       >
-                        Apply Link ↗
-                      </a>
-                    )}
-                    <button
-                      onClick={() => handleApply(j._id)}
-                      disabled={hasApplied}
-                      className={`px-4 py-1.5 rounded-xl font-bold text-xs transition ${
-                        hasApplied
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-default'
-                          : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
-                      }`}
-                    >
-                      {hasApplied ? 'Applied ✓' : 'Apply / Request Referral'}
-                    </button>
-                  </div>
+                        {hasApplied ? 'Applied ✓' : 'Apply / Request Referral'}
+                      </button>
+                    </div>
                 </div>
               </div>
             );

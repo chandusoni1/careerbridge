@@ -29,6 +29,10 @@ export const messagesApi = {
   markRead: async (conversationId) => {
     return apiClient.patch(`/messages/${conversationId}/read`);
   },
+
+  markDelivered: async (messageId) => {
+    return apiClient.patch(`/messages/${messageId}/delivered`);
+  },
 };
 
 export default messagesApi;

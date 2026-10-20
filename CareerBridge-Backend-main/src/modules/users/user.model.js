@@ -54,9 +54,27 @@ const userSchema = new mongoose.Schema(
     },
     isVerified: { type: Boolean, default: false },
     isAlumniVerified: { type: Boolean, default: false },
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'under_review', 'verified', 'rejected', 'resubmission_required'],
+      default: 'pending',
+    },
+    collegeIdCard: {
+      url: { type: String, select: false, default: '' },
+      name: { type: String, default: '' },
+      format: { type: String, default: '' },
+      uploadedAt: { type: Date },
+    },
+    verificationDecision: {
+      decidedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      decidedAt: { type: Date },
+      reason: { type: String, default: '' },
+      matchScore: { type: Number, default: 0 },
+    },
 
     // Professional profile details
     profilePhoto: { type: String, default: '' },
+    coverPhoto: { type: String, default: '' },
     headline: { type: String, default: '' },
     bio: { type: String, default: '' },
     about: { type: String, default: '' },

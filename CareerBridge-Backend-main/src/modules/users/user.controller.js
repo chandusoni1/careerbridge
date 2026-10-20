@@ -37,6 +37,41 @@ const getAdminStats = asyncHandler(async (req, res) => {
   res.status(200).json(stats);
 });
 
+const getAdminVerifications = asyncHandler(async (req, res) => {
+  const verifications = await userService.getAdminVerificationList();
+  res.status(200).json(verifications);
+});
+
+const getAdminUserCollegeId = asyncHandler(async (req, res) => {
+  const data = await userService.getAdminUserCollegeId(req.params.userId);
+  res.status(200).json(data);
+});
+
+const decideVerification = asyncHandler(async (req, res) => {
+  const updatedUser = await userService.decideVerification(
+    req.params.userId,
+    req.body,
+    req.user.id
+  );
+  res.status(200).json({
+    success: true,
+    message: `Verification decision recorded: ${req.body.status}`,
+    user: updatedUser,
+  });
+});
+
+const resubmitCollegeId = asyncHandler(async (req, res) => {
+  const updatedUser = await userService.resubmitCollegeId(
+    req.user.id,
+    req.body.collegeIdCard
+  );
+  res.status(200).json({
+    success: true,
+    message: 'College ID resubmitted successfully for verification',
+    user: updatedUser,
+  });
+});
+
 module.exports = {
   getAllUsers,
   getMyProfile,
@@ -44,4 +79,8 @@ module.exports = {
   updateProfile,
   getDashboardSummary,
   getAdminStats,
+  getAdminVerifications,
+  getAdminUserCollegeId,
+  decideVerification,
+  resubmitCollegeId,
 };

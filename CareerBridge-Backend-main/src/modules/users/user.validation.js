@@ -25,6 +25,8 @@ const validateUpdateProfile = (req) => {
     'experienceYears',
     'isAvailableForMentorship',
     'profilePhoto',
+    'avatar',
+    'coverPhoto',
     'education',
     'experience',
     'projects',

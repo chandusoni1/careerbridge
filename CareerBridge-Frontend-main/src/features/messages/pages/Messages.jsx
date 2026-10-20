@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { messagesApi } from '../../../services/messages.api';
 import { connectionsApi } from '../../../services/connections.api';
 import { LoadingSpinner } from '../../../components/feedback';
+import { UserAvatar } from '../../../components/common/UserAvatar';
 
 export const Messages = ({ user }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -108,6 +109,18 @@ export const Messages = ({ user }) => {
       if (Array.isArray(msgs)) {
         setMessages(msgs);
         setTimeout(scrollToBottom, 100);
+
+        // Acknowledge delivery to server for incoming un-delivered messages
+        const undelivered = msgs.filter(
+          (m) =>
+            (m.receiver?._id || m.receiver) === user?._id &&
+            m.status === 'sent'
+        );
+        if (undelivered.length > 0) {
+          undelivered.forEach((m) => {
+            messagesApi.markDelivered(m._id).catch(() => {});
+          });
+        }
       }
     } catch (err) {
       console.error('Failed to load messages:', err);
@@ -464,9 +477,11 @@ export const Messages = ({ user }) => {
                     >
                       {/* Avatar */}
                       <div className="relative shrink-0">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 font-black text-sm flex items-center justify-center shadow-md">
-                          {conn.name ? conn.name[0].toUpperCase() : 'U'}
-                        </div>
+                        <UserAvatar
+                          src={conn.profilePhoto}
+                          name={conn.name}
+                          size="lg"
+                        />
                       </div>
 
                       {/* Connection Details & Latest Message Snippet */}
@@ -534,12 +549,13 @@ export const Messages = ({ user }) => {
 
                   {/* Partner Avatar with Online Indicator */}
                   <div className="relative shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-slate-800 text-cyan-400 font-black text-xs flex items-center justify-center border border-slate-700">
-                      {partner?.name ? partner.name[0].toUpperCase() : 'U'}
-                    </div>
-                    {partnerPresence.isOnline && (
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
-                    )}
+                    <UserAvatar
+                      src={partner?.profilePhoto}
+                      name={partner?.name}
+                      size="md"
+                      showOnline={true}
+                      isOnline={partnerPresence.isOnline}
+                    />
                   </div>
 
                   {/* Partner Info and Online / Last Seen Status */}
@@ -666,13 +682,31 @@ export const Messages = ({ user }) => {
                         )}
                       </div>
 
-                      {/* Timestamp */}
-                      <span className="text-[10px] text-slate-500 mt-1 px-1 flex items-center gap-1 font-semibold">
-                        {new Date(m.createdAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                        {isMe && <span className="text-cyan-400">✓✓</span>}
+                      {/* Timestamp & Delivery Tick Status */}
+                      <span className="text-[10px] text-slate-500 mt-1 px-1 flex items-center gap-1.5 font-semibold">
+                        <span>
+                          {new Date(m.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        {isMe && (
+                          <span className="inline-flex items-center text-xs ml-0.5" title={
+                            m.status === 'read' || m.isRead
+                              ? 'Read'
+                              : m.status === 'delivered'
+                              ? 'Delivered to recipient device'
+                              : 'Sent to server'
+                          }>
+                            {m.status === 'read' || m.isRead ? (
+                              <span className="text-cyan-400 font-extrabold tracking-tighter">✓✓</span>
+                            ) : m.status === 'delivered' ? (
+                              <span className="text-slate-400 font-bold tracking-tighter">✓✓</span>
+                            ) : (
+                              <span className="text-slate-400 font-bold">✓</span>
+                            )}
+                          </span>
+                        )}
                       </span>
                     </div>
                   );

@@ -45,10 +45,15 @@ const getUserById = async (id, viewerId = null) => {
 };
 
 const updateUserProfile = async (id, updateData) => {
-  // Prevent direct mutation of sensitive credential fields
+  // Prevent direct mutation of sensitive credential and verification fields
   delete updateData.password;
   delete updateData.role;
   delete updateData._id;
+  delete updateData.verificationStatus;
+  delete updateData.isVerified;
+  delete updateData.isAlumniVerified;
+  delete updateData.collegeIdCard;
+  delete updateData.verificationDecision;
 
   const updatedUser = await User.findByIdAndUpdate(
     id,
@@ -61,6 +66,109 @@ const updateUserProfile = async (id, updateData) => {
   }
 
   return updatedUser;
+};
+
+const getAdminVerificationList = async () => {
+  return User.find(
+    { role: { $in: ['student', 'alumni'] } },
+    {
+      name: 1,
+      email: 1,
+      role: 1,
+      college: 1,
+      branch: 1,
+      academicYear: 1,
+      passingYear: 1,
+      verificationStatus: 1,
+      isVerified: 1,
+      verificationDecision: 1,
+      createdAt: 1,
+    }
+  ).sort({ createdAt: -1 });
+};
+
+const getAdminUserCollegeId = async (userId) => {
+  const user = await User.findById(userId).select('+collegeIdCard');
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  return {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    college: user.college,
+    branch: user.branch,
+    role: user.role,
+    verificationStatus: user.verificationStatus,
+    collegeIdCard: user.collegeIdCard,
+  };
+};
+
+const decideVerification = async (userId, { status, reason }, adminId) => {
+  if (!['verified', 'rejected', 'resubmission_required'].includes(status)) {
+    throw ApiError.badRequest('Invalid verification status decision');
+  }
+
+  const isVerified = status === 'verified';
+  const user = await User.findById(userId);
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  const updated = await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        verificationStatus: status,
+        isVerified,
+        isAlumniVerified: isVerified && user.role === 'alumni',
+        verificationDecision: {
+          decidedBy: adminId,
+          decidedAt: new Date(),
+          reason: reason || '',
+        },
+      },
+    },
+    { new: true }
+  ).select('-password');
+
+  return updated;
+};
+
+const resubmitCollegeId = async (userId, collegeIdCardData) => {
+  if (!collegeIdCardData) {
+    throw ApiError.badRequest('College ID Card data is required');
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw ApiError.notFound('User not found');
+  }
+
+  const fileUrl =
+    typeof collegeIdCardData === 'string'
+      ? collegeIdCardData
+      : collegeIdCardData.dataUrl || collegeIdCardData.url || '';
+
+  const updated = await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        collegeIdCard: {
+          url: fileUrl,
+          name: collegeIdCardData.name || 'Resubmitted College ID',
+          format: collegeIdCardData.type || collegeIdCardData.format || 'document',
+          uploadedAt: new Date(),
+        },
+        verificationStatus: 'under_review',
+        'verificationDecision.reason': '',
+      },
+    },
+    { new: true }
+  ).select('-password');
+
+  return updated;
 };
 
 const calculateProfileCompletion = (user) => {
@@ -132,4 +240,8 @@ module.exports = {
   getUserDashboardSummary,
   calculateProfileCompletion,
   getAdminStats,
+  getAdminVerificationList,
+  getAdminUserCollegeId,
+  decideVerification,
+  resubmitCollegeId,
 };

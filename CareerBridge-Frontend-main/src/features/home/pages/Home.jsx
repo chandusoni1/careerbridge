@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { postsApi } from '../../../services/posts.api';
 import { LoadingSpinner, EmptyState } from '../../../components/feedback';
+import { UserAvatar } from '../../../components/common/UserAvatar';
 
 export const Home = ({ user }) => {
   const [posts, setPosts] = useState([]);
@@ -194,9 +195,12 @@ export const Home = ({ user }) => {
       {/* Left Sidebar: User Mini Profile Card */}
       <div className="space-y-6">
         <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl text-center space-y-4 shadow-xl">
-          <div className="w-20 h-20 bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 text-3xl font-black flex items-center justify-center rounded-full mx-auto shadow-lg shadow-cyan-500/20">
-            {user?.name ? user.name[0].toUpperCase() : '?'}
-          </div>
+          <UserAvatar
+            src={user?.profilePhoto}
+            name={user?.name}
+            size="2xl"
+            className="mx-auto border-2 border-slate-700/60"
+          />
           <div>
             <h2 className="text-xl font-extrabold text-white">
               {user?.name || 'Guest User'}
@@ -257,9 +261,11 @@ export const Home = ({ user }) => {
           className="bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-xl space-y-3"
         >
           <div className="flex gap-3 items-start">
-            <div className="w-10 h-10 rounded-full bg-cyan-500 text-slate-950 font-bold flex items-center justify-center shrink-0">
-              {user?.name ? user.name[0].toUpperCase() : 'U'}
-            </div>
+            <UserAvatar
+              src={user?.profilePhoto}
+              name={user?.name}
+              size="md"
+            />
             <textarea
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
@@ -370,9 +376,11 @@ export const Home = ({ user }) => {
                   {/* Post Header */}
                   <div className="flex justify-between items-start">
                     <div className="flex gap-3 items-center">
-                      <div className="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-white text-base">
-                        {post.author?.name ? post.author.name[0].toUpperCase() : 'U'}
-                      </div>
+                      <UserAvatar
+                        src={post.author?.profilePhoto}
+                        name={post.author?.name}
+                        size="md"
+                      />
                       <div>
                         <div className="font-extrabold text-white text-sm">
                           {post.author?.name || 'Community Member'}

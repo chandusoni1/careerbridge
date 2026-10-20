@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuthContext } from '../../stores';
+import { useAuthContext, useTheme } from '../../stores';
 import { searchApi } from '../../services/search.api';
 import { notificationsApi } from '../../services/notifications.api';
+import { UserAvatar } from '../common/UserAvatar';
 
 export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +18,7 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
   const location = useLocation();
   const auth = useAuthContext();
   const user = propUser || auth.user;
+  const { theme, toggleTheme } = useTheme();
 
   // Poll for notifications if logged in
   useEffect(() => {
@@ -123,12 +125,19 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
                           key={u._id}
                           to={`/profile/${u._id}`}
                           onClick={() => setSearchQuery('')}
-                          className="flex items-center gap-2 p-1.5 hover:bg-slate-800 rounded-lg text-xs"
+                          className="flex items-center gap-2.5 p-2 hover:bg-slate-800 rounded-xl text-xs transition"
                         >
-                          <span className="font-bold text-white">{u.name}</span>
-                          <span className="text-slate-400 text-[11px] truncate">
-                            {u.headline || u.role}
-                          </span>
+                          <UserAvatar
+                            src={u.profilePhoto}
+                            name={u.name}
+                            size="sm"
+                          />
+                          <div className="overflow-hidden">
+                            <span className="font-bold text-white block truncate">{u.name}</span>
+                            <span className="text-slate-400 text-[11px] block truncate">
+                              {u.headline || `${u.role ? u.role.toUpperCase() : 'Member'} • ${u.company || u.college || 'CareerBridge'}`}
+                            </span>
+                          </div>
                         </Link>
                       ))}
                     </div>
@@ -146,10 +155,17 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
                           key={j._id}
                           to="/jobs"
                           onClick={() => setSearchQuery('')}
-                          className="block p-1.5 hover:bg-slate-800 rounded-lg text-xs"
+                          className="flex items-center gap-2.5 p-2 hover:bg-slate-800 rounded-xl text-xs transition"
                         >
-                          <div className="font-bold text-white">{j.title}</div>
-                          <div className="text-slate-400 text-[11px]">{j.company}</div>
+                          <UserAvatar
+                            src={j.postedBy?.profilePhoto}
+                            name={j.company || j.title}
+                            size="sm"
+                          />
+                          <div className="overflow-hidden">
+                            <div className="font-bold text-white truncate">{j.title}</div>
+                            <div className="text-slate-400 text-[11px] truncate">{j.company}</div>
+                          </div>
                         </Link>
                       ))}
                     </div>
@@ -248,11 +264,14 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
               <div className="flex items-center space-x-3 border-l border-slate-700 pl-4">
                 <Link
                   to="/profile"
-                  className="text-cyan-400 font-black text-xs hover:underline flex items-center gap-1.5"
+                  className="text-cyan-400 font-black text-xs hover:underline flex items-center gap-2"
                 >
-                  <div className="w-6 h-6 rounded-full bg-cyan-500 text-slate-950 font-bold flex items-center justify-center text-[10px]">
-                    {user?.name ? user.name[0].toUpperCase() : 'U'}
-                  </div>
+                  <UserAvatar
+                    src={user?.profilePhoto}
+                    name={user?.name}
+                    size="xs"
+                    className="border border-cyan-500/40"
+                  />
                   <span>{user?.name?.split(' ')[0]}</span>
                 </Link>
                 <button
@@ -279,6 +298,27 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
               </Link>
             </div>
           )}
+
+          {/* Theme Toggle Button (Light / Dark) */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-slate-700/60 transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+            title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            aria-label={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          >
+            {theme === 'dark' ? (
+              <>
+                <span className="text-sm">☀️</span>
+                <span className="hidden xl:inline text-[11px] text-slate-300 font-bold">Light</span>
+              </>
+            ) : (
+              <>
+                <span className="text-sm">🌙</span>
+                <span className="hidden xl:inline text-[11px] text-slate-700 font-bold">Dark</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Mobile Toggle */}
@@ -318,9 +358,14 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
                 <Link
                   to="/profile"
                   onClick={() => setIsOpen(false)}
-                  className="text-cyan-400 font-bold"
+                  className="text-cyan-400 font-bold flex items-center gap-2 text-xs"
                 >
-                  👤 {user?.name}
+                  <UserAvatar
+                    src={user?.profilePhoto}
+                    name={user?.name}
+                    size="xs"
+                  />
+                  <span>{user?.name}</span>
                 </Link>
                 <button
                   onClick={handleLogout}
@@ -348,6 +393,18 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
               </Link>
             </div>
           )}
+
+          {/* Mobile Theme Toggle */}
+          <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+            <span className="text-slate-400 text-xs">Theme: {theme === 'dark' ? 'Dark Mode 🌙' : 'Light Mode ☀️'}</span>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 text-amber-300 font-bold text-xs flex items-center gap-1.5"
+            >
+              {theme === 'dark' ? '☀️ Switch to Light' : '🌙 Switch to Dark'}
+            </button>
+          </div>
         </div>
       )}
     </nav>

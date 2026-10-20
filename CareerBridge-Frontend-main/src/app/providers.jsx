@@ -1,13 +1,15 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from '../stores';
+import { AuthProvider, ThemeProvider } from '../stores';
 
 export const AppProviders = ({ children }) => {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        {children}
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 };

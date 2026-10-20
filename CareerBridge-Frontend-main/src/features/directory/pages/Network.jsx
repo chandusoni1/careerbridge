@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { connectionsApi } from '../../../services/connections.api';
 import { LoadingSpinner, EmptyState } from '../../../components/feedback';
+import { UserAvatar } from '../../../components/common/UserAvatar';
 
 export const Network = ({ user }) => {
   const [activeTab, setActiveTab] = useState('connections');
@@ -174,9 +175,11 @@ export const Network = ({ user }) => {
                       className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-4 hover:border-slate-700 transition"
                     >
                       <div className="flex gap-3 items-center">
-                        <div className="w-12 h-12 rounded-full bg-cyan-500 text-slate-950 font-black flex items-center justify-center text-lg shrink-0">
-                          {u.name ? u.name[0].toUpperCase() : 'U'}
-                        </div>
+                        <UserAvatar
+                          src={u.profilePhoto}
+                          name={u.name}
+                          size="lg"
+                        />
                         <div className="overflow-hidden">
                           <h4 className="font-extrabold text-white text-sm truncate">
                             {u.name}
@@ -225,9 +228,11 @@ export const Network = ({ user }) => {
                       className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4"
                     >
                       <div className="flex gap-3 items-center">
-                        <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 font-black flex items-center justify-center text-white shrink-0">
-                          {u.name ? u.name[0].toUpperCase() : 'U'}
-                        </div>
+                        <UserAvatar
+                          src={u.profilePhoto}
+                          name={u.name}
+                          size="lg"
+                        />
                         <div className="overflow-hidden">
                           <h4 className="font-extrabold text-white text-sm truncate">
                             {u.name}
@@ -275,9 +280,11 @@ export const Network = ({ user }) => {
                       className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4"
                     >
                       <div className="flex gap-3 items-center">
-                        <div className="w-12 h-12 rounded-full bg-slate-800 font-black flex items-center justify-center text-white shrink-0">
-                          {u.name ? u.name[0].toUpperCase() : 'U'}
-                        </div>
+                        <UserAvatar
+                          src={u.profilePhoto}
+                          name={u.name}
+                          size="lg"
+                        />
                         <div className="overflow-hidden">
                           <h4 className="font-extrabold text-white text-sm truncate">
                             {u.name}
@@ -317,9 +324,11 @@ export const Network = ({ user }) => {
                       className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between space-y-4 hover:border-slate-700 transition"
                     >
                       <div className="flex gap-3 items-center">
-                        <div className="w-12 h-12 rounded-full bg-indigo-500/20 text-indigo-400 font-black flex items-center justify-center text-lg shrink-0">
-                          {u.name ? u.name[0].toUpperCase() : 'U'}
-                        </div>
+                        <UserAvatar
+                          src={u.profilePhoto}
+                          name={u.name}
+                          size="lg"
+                        />
                         <div className="overflow-hidden">
                           <h4 className="font-extrabold text-white text-sm truncate">
                             {u.name}

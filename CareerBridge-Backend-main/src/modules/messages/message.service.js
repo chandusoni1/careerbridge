@@ -48,10 +48,10 @@ const getMessages = async (conversationId, userId) => {
     throw ApiError.forbidden('Unauthorized access to this conversation');
   }
 
-  // Mark incoming unread messages as read
+  // Mark incoming unread messages as read with timestamp
   await Message.updateMany(
-    { conversationId, receiver: userId, isRead: false },
-    { $set: { isRead: true } }
+    { conversationId, receiver: userId, status: { $ne: 'read' } },
+    { $set: { status: 'read', isRead: true, readAt: new Date() } }
   );
 
   return Message.find({ conversationId })
@@ -133,10 +133,19 @@ const getUserPresence = async (targetUserId) => {
   };
 };
 
+const markMessageDelivered = async (messageId, receiverId) => {
+  const updated = await Message.findOneAndUpdate(
+    { _id: messageId, receiver: receiverId, status: 'sent' },
+    { $set: { status: 'delivered', deliveredAt: new Date() } },
+    { new: true }
+  );
+  return updated;
+};
+
 const markConversationRead = async (conversationId, userId) => {
   await Message.updateMany(
-    { conversationId, receiver: userId, isRead: false },
-    { $set: { isRead: true } }
+    { conversationId, receiver: userId, status: { $ne: 'read' } },
+    { $set: { status: 'read', isRead: true, readAt: new Date() } }
   );
   return { success: true };
 };
@@ -147,5 +156,6 @@ module.exports = {
   getMessages,
   sendMessage,
   getUserPresence,
+  markMessageDelivered,
   markConversationRead,
 };

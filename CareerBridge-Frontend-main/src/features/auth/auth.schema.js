@@ -46,8 +46,16 @@ export const validateSignup = (values) => {
     errors.role = 'Role selection is required';
   }
 
+  if (values.role === 'student' || values.role === 'alumni') {
+    if (!values.college) {
+      errors.college = 'College selection (CSIT or CSIP) is required';
+    }
+    if (!values.collegeIdCard) {
+      errors.collegeIdCard = 'College ID card upload is mandatory for institutional verification';
+    }
+  }
+
   if (values.role === 'student') {
-    if (!values.college) errors.college = 'College selection is required';
     if (!values.branch) errors.branch = 'Branch selection is required';
     if (!values.academicYear) errors.academicYear = 'Current academic year is required';
   }

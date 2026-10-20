@@ -50,6 +50,53 @@ const initSocket = (httpServer) => {
       }
     });
 
+    socket.on('message_delivered', async ({ messageId, conversationId, senderId }) => {
+      if (!messageId) return;
+      try {
+        const { Message } = require('../modules/notifications/notification.model');
+        const updated = await Message.findOneAndUpdate(
+          { _id: messageId, status: 'sent' },
+          { $set: { status: 'delivered', deliveredAt: new Date() } },
+          { new: true }
+        );
+        if (updated && senderId) {
+          io.to(senderId.toString()).emit('message_status_update', {
+            messageId,
+            conversationId,
+            status: 'delivered',
+            deliveredAt: updated.deliveredAt,
+          });
+        }
+      } catch (err) {
+        logger.error(`Error in message_delivered socket handler: ${err.message}`);
+      }
+    });
+
+    socket.on('message_read', async ({ conversationId, messageIds, senderId }) => {
+      try {
+        const { Message } = require('../modules/notifications/notification.model');
+        const filter =
+          messageIds && messageIds.length > 0
+            ? { _id: { $in: messageIds } }
+            : { conversationId };
+
+        await Message.updateMany(filter, {
+          $set: { status: 'read', isRead: true, readAt: new Date() },
+        });
+
+        if (senderId) {
+          io.to(senderId.toString()).emit('message_status_update', {
+            conversationId,
+            messageIds,
+            status: 'read',
+            readAt: new Date(),
+          });
+        }
+      } catch (err) {
+        logger.error(`Error in message_read socket handler: ${err.message}`);
+      }
+    });
+
     socket.on('disconnect', () => {
       logger.info(`❌ Socket Disconnected: ${socket.id}`);
       const userId = socketUserMap.get(socket.id);

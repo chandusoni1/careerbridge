@@ -52,6 +52,14 @@ const getUserPresence = asyncHandler(async (req, res) => {
   res.status(200).json(presence);
 });
 
+const markDelivered = asyncHandler(async (req, res) => {
+  const result = await messageService.markMessageDelivered(
+    req.params.id,
+    req.user.id || req.user._id
+  );
+  res.status(200).json({ success: true, message: result });
+});
+
 const markRead = asyncHandler(async (req, res) => {
   const result = await messageService.markConversationRead(
     req.params.conversationId,
@@ -66,5 +74,6 @@ module.exports = {
   getMessages,
   sendMessage,
   getUserPresence,
+  markDelivered,
   markRead,
 };
