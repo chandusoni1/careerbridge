@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { userApi } from '../../../services/user.api';
 import { connectionsApi } from '../../../services/connections.api';
 import { LoadingSpinner } from '../../../components/feedback';
 import { useAuthContext } from '../../../stores';
+import { UserAvatar } from '../../../components/common/UserAvatar';
 
 export const Profile = ({ user: currentUser }) => {
   const { id } = useParams();
@@ -16,6 +17,11 @@ export const Profile = ({ user: currentUser }) => {
   const [saveSuccess, setSaveSuccess] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Connection status with viewed user
+  const [connectionStatus, setConnectionStatus] = useState('none'); // 'connected' | 'pending' | 'received' | 'none'
+  const [isConnectLoading, setIsConnectLoading] = useState(false);
+  const [connectFeedback, setConnectFeedback] = useState('');
 
   // Resubmission modal state
   const [showResubmitModal, setShowResubmitModal] = useState(false);
@@ -72,6 +78,22 @@ export const Profile = ({ user: currentUser }) => {
           experience: Array.isArray(data.experience) ? data.experience : [],
           projects: Array.isArray(data.projects) ? data.projects : [],
         });
+
+        // If viewing another user's profile, check authentic connection status
+        if (!isOwnProfile && (id || data._id)) {
+          const targetId = id || data._id;
+          try {
+            const statusRes = await connectionsApi.getStatus(targetId);
+            if (statusRes && statusRes.status) {
+              setConnectionStatus(statusRes.status);
+            }
+          } catch {
+            const isConn = (data.connections || []).some(
+              (c) => (c._id || c).toString() === (currentUser?._id || currentUser?.id)?.toString()
+            );
+            setConnectionStatus(isConn ? 'connected' : 'none');
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to load profile:', err);
@@ -83,6 +105,54 @@ export const Profile = ({ user: currentUser }) => {
   useEffect(() => {
     loadProfile();
   }, [id]);
+
+  const handleConnect = async () => {
+    const targetId = profile?._id || id;
+    if (!targetId || isConnectLoading) return;
+    setIsConnectLoading(true);
+    try {
+      await connectionsApi.sendRequest(targetId);
+      setConnectionStatus('pending');
+      setConnectFeedback('Connection request sent! 🚀');
+      setTimeout(() => setConnectFeedback(''), 3000);
+    } catch (err) {
+      alert(err.message || 'Failed to send connection request');
+    } finally {
+      setIsConnectLoading(false);
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    const targetId = profile?._id || id;
+    if (!targetId || isConnectLoading) return;
+    setIsConnectLoading(true);
+    try {
+      await connectionsApi.acceptRequest(targetId);
+      setConnectionStatus('connected');
+      setConnectFeedback('Connected! 🎉');
+      setTimeout(() => setConnectFeedback(''), 3000);
+    } catch (err) {
+      alert(err.message || 'Failed to accept connection');
+    } finally {
+      setIsConnectLoading(false);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    const targetId = profile?._id || id;
+    if (!targetId || isConnectLoading) return;
+    setIsConnectLoading(true);
+    try {
+      await connectionsApi.cancelRequest(targetId);
+      setConnectionStatus('none');
+      setConnectFeedback('Connection request cancelled.');
+      setTimeout(() => setConnectFeedback(''), 3000);
+    } catch (err) {
+      alert(err.message || 'Failed to cancel request');
+    } finally {
+      setIsConnectLoading(false);
+    }
+  };
 
   // Profile Photo Upload Handler
   const handlePhotoUpload = (e) => {
@@ -315,19 +385,15 @@ export const Profile = ({ user: currentUser }) => {
 
         <div className="px-6 md:px-8 pb-8 pt-0 relative flex flex-col md:flex-row justify-between items-start md:items-end gap-6 -mt-16">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
-            {/* Avatar with Upload Action */}
-            <div className="relative group">
-              <div className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-slate-900 bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 font-black text-4xl flex items-center justify-center shadow-xl overflow-hidden shrink-0">
-                {currentAvatar ? (
-                  <img
-                    src={currentAvatar}
-                    alt={profile.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  profile.name ? profile.name[0].toUpperCase() : 'U'
-                )}
-              </div>
+            {/* Avatar with Upload Action & WhatsApp-Style DP Preview */}
+            <div className="relative group shrink-0">
+              <UserAvatar
+                src={currentAvatar}
+                name={profile.name}
+                size="3xl"
+                className="w-28 h-28 md:w-32 md:h-32 border-4 border-slate-900 shadow-xl"
+                previewable={!isEditing}
+              />
 
               {isOwnProfile && isEditing && (
                 <div className="absolute inset-0 rounded-full bg-slate-950/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1 transition backdrop-blur-xs">
@@ -403,7 +469,13 @@ export const Profile = ({ user: currentUser }) => {
             </div>
           </div>
 
-          <div className="flex gap-2.5">
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2.5">
+            {connectFeedback && (
+              <span className="text-xs font-bold text-cyan-400 bg-cyan-950/80 px-3 py-1.5 rounded-xl border border-cyan-500/30 animate-fade-in">
+                {connectFeedback}
+              </span>
+            )}
+
             {isOwnProfile ? (
               <button
                 onClick={() => setIsEditing(!isEditing)}
@@ -412,19 +484,60 @@ export const Profile = ({ user: currentUser }) => {
                 {isEditing ? 'Cancel Edit' : 'Edit Profile ✏️'}
               </button>
             ) : (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => connectionsApi.sendRequest(profile._id)}
-                  className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition"
+              <div className="flex items-center gap-2">
+                {/* Case 1: Already Connected - Non-clickable status label */}
+                {connectionStatus === 'connected' ? (
+                  <span
+                    className="px-4 py-2.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold text-xs rounded-xl flex items-center gap-1.5 select-none"
+                    title="You are already connected with this user"
+                  >
+                    <span>✓</span>
+                    <span>Connected</span>
+                  </span>
+                ) : connectionStatus === 'pending' ? (
+                  /* Case 3: Request already sent - pending status with cancel option */
+                  <button
+                    type="button"
+                    onClick={handleCancelRequest}
+                    disabled={isConnectLoading}
+                    className="px-4 py-2.5 bg-amber-500/15 hover:bg-rose-500/20 text-amber-300 hover:text-rose-300 border border-amber-500/30 hover:border-rose-500/30 font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                    title="Connection request sent. Click to cancel."
+                  >
+                    <span>⏳</span>
+                    <span>Request Sent</span>
+                  </button>
+                ) : connectionStatus === 'received' ? (
+                  /* Incoming request - Accept button */
+                  <button
+                    type="button"
+                    onClick={handleAcceptRequest}
+                    disabled={isConnectLoading}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                  >
+                    <span>✓</span>
+                    <span>Accept Request</span>
+                  </button>
+                ) : (
+                  /* Case 2: Not connected - Connect button */
+                  <button
+                    type="button"
+                    onClick={handleConnect}
+                    disabled={isConnectLoading}
+                    className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <span>+</span>
+                    <span>{isConnectLoading ? 'Connecting...' : 'Connect'}</span>
+                  </button>
+                )}
+
+                {/* Direct Message button */}
+                <Link
+                  to={`/messages?userId=${profile._id}`}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 border border-slate-700 font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-sm"
                 >
-                  + Connect
-                </button>
-                <a
-                  href={`/messages?userId=${profile._id}`}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl"
-                >
-                  Message 💬
-                </a>
+                  <span>💬</span>
+                  <span>Message</span>
+                </Link>
               </div>
             )}
           </div>

@@ -182,6 +182,28 @@ const getConnectionSummary = async (userId) => {
   };
 };
 
+const getConnectionStatus = async (userId, targetUserId) => {
+  if (!userId || !targetUserId) return { status: 'none' };
+  if (userId.toString() === targetUserId.toString()) return { status: 'self' };
+
+  const user = await User.findById(userId).select(
+    'connections connectionRequests sentConnectionRequests'
+  );
+  if (!user) return { status: 'none' };
+
+  const targetStr = targetUserId.toString();
+  if (user.connections?.some((id) => id.toString() === targetStr)) {
+    return { status: 'connected' };
+  }
+  if (user.sentConnectionRequests?.some((id) => id.toString() === targetStr)) {
+    return { status: 'pending' };
+  }
+  if (user.connectionRequests?.some((id) => id.toString() === targetStr)) {
+    return { status: 'received' };
+  }
+  return { status: 'none' };
+};
+
 module.exports = {
   getAlumniDirectory,
   getStudentDirectory,
@@ -191,4 +213,5 @@ module.exports = {
   cancelConnectionRequest,
   removeConnection,
   getConnectionSummary,
+  getConnectionStatus,
 };

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { storage } from '../utils';
+import { connectSocket, disconnectSocket } from '../services/socket';
 
 const AuthContext = createContext(null);
 
@@ -18,6 +19,16 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
+  // Manage active real-time presence connection
+  useEffect(() => {
+    const userId = user?._id || user?.id;
+    if (userId) {
+      connectSocket(userId);
+    } else {
+      disconnectSocket();
+    }
+  }, [user?._id, user?.id]);
+
   const login = (userData, authToken) => {
     storage.setUser(userData);
     storage.setToken(authToken);
@@ -26,6 +37,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    disconnectSocket();
     storage.clearAuth();
     setUser(null);
     setToken(null);

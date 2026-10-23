@@ -6,6 +6,7 @@ const authenticate = require('../../middleware/authenticate');
 router.get('/alumni', directoryController.getAlumni);
 router.get('/students', directoryController.getStudents);
 router.get('/summary', authenticate, directoryController.getConnectionSummary);
+router.get('/status/:targetUserId', authenticate, directoryController.getConnectionStatus);
 
 // Connection endpoints protected with authentication
 router.post('/connect/request', authenticate, directoryController.sendConnectRequest);

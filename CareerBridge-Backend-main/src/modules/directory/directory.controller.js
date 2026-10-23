@@ -83,6 +83,13 @@ const getConnectionSummary = asyncHandler(async (req, res) => {
   res.status(200).json(summary);
 });
 
+const getConnectionStatus = asyncHandler(async (req, res) => {
+  const userId = extractUserId(req);
+  const targetUserId = req.params.targetUserId;
+  const status = await directoryService.getConnectionStatus(userId, targetUserId);
+  res.status(200).json(status);
+});
+
 module.exports = {
   getAlumni,
   getStudents,
@@ -92,4 +99,5 @@ module.exports = {
   cancelConnectRequest,
   removeConnection,
   getConnectionSummary,
+  getConnectionStatus,
 };

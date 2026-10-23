@@ -523,13 +523,20 @@ export const Home = ({ user }) => {
                           {post.comments.map((c) => (
                             <div
                               key={c._id}
-                              className="p-2.5 bg-slate-950 border border-slate-800/80 rounded-xl flex justify-between items-start text-xs"
+                              className="p-2.5 bg-slate-950 border border-slate-800/80 rounded-xl flex justify-between items-start text-xs gap-2.5"
                             >
-                              <div>
-                                <span className="font-extrabold text-slate-200 mr-2">
-                                  {c.author?.name || 'Member'}:
-                                </span>
-                                <span className="text-slate-300">{c.text}</span>
+                              <div className="flex items-start gap-2">
+                                <UserAvatar
+                                  src={c.author?.profilePhoto}
+                                  name={c.author?.name}
+                                  size="xs"
+                                />
+                                <div>
+                                  <span className="font-extrabold text-slate-200 mr-2">
+                                    {c.author?.name || 'Member'}:
+                                  </span>
+                                  <span className="text-slate-300">{c.text}</span>
+                                </div>
                               </div>
                               {(c.author?._id === user?._id || user?.role === 'admin') && (
                                 <button

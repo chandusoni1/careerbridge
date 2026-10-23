@@ -4,6 +4,7 @@ import { messagesApi } from '../../../services/messages.api';
 import { connectionsApi } from '../../../services/connections.api';
 import { LoadingSpinner } from '../../../components/feedback';
 import { UserAvatar } from '../../../components/common/UserAvatar';
+import { getSocket } from '../../../services/socket';
 
 export const Messages = ({ user }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -121,6 +122,16 @@ export const Messages = ({ user }) => {
             messagesApi.markDelivered(m._id).catch(() => {});
           });
         }
+
+        // Active recipient is viewing the conversation: mark incoming unread messages as read
+        const hasUnread = msgs.some(
+          (m) =>
+            (m.receiver?._id || m.receiver) === user?._id &&
+            (m.status !== 'read' || !m.isRead)
+        );
+        if (hasUnread) {
+          messagesApi.markRead(convId).catch(() => {});
+        }
       }
     } catch (err) {
       console.error('Failed to load messages:', err);
@@ -131,7 +142,108 @@ export const Messages = ({ user }) => {
     loadChatData();
   }, [preselectedUserId]);
 
-  // Periodic polling for active conversation messages
+  // Real-time socket message delivery, read status, and presence listeners
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    // Incoming real-time message handler
+    const handleReceiveMessage = (msg) => {
+      if (!msg) return;
+      const currentConvId = activeConversation?._id;
+      const msgConvId = msg.conversationId || msg.conversation;
+
+      if (currentConvId && msgConvId === currentConvId) {
+        setMessages((prev) => {
+          if (prev.some((m) => m._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
+        setTimeout(scrollToBottom, 100);
+
+        // Current client received and viewed the message: acknowledge delivered & read
+        if ((msg.receiver?._id || msg.receiver) === user?._id) {
+          messagesApi.markDelivered(msg._id).catch(() => {});
+          messagesApi.markRead(currentConvId).catch(() => {});
+        }
+      } else {
+        // Acknowledge delivery even if not actively in this chat
+        if ((msg.receiver?._id || msg.receiver) === user?._id) {
+          messagesApi.markDelivered(msg._id).catch(() => {});
+        }
+      }
+
+      // Update snippet in conversation list
+      setConversations((prev) =>
+        prev.map((c) =>
+          c._id === msgConvId
+            ? {
+                ...c,
+                lastMessage:
+                  msg.text ||
+                  (msg.attachments?.[0]?.name
+                    ? `📎 ${msg.attachments[0].name}`
+                    : '📎 Attachment'),
+                lastMessageAt: new Date(),
+              }
+            : c
+        )
+      );
+    };
+
+    // Real-time status update handler (delivered / read ticks)
+    const handleStatusUpdate = (update) => {
+      if (!update) return;
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (update.messageId && m._id === update.messageId) {
+            return {
+              ...m,
+              status: update.status,
+              deliveredAt: update.deliveredAt || m.deliveredAt,
+              readAt: update.readAt || m.readAt,
+            };
+          }
+          if (
+            update.conversationId &&
+            (m.conversationId === update.conversationId ||
+              m.conversation === update.conversationId)
+          ) {
+            if (update.status === 'read') {
+              return { ...m, status: 'read', isRead: true, readAt: update.readAt || new Date() };
+            }
+          }
+          return m;
+        })
+      );
+    };
+
+    // Real-time partner presence update
+    const handlePresenceUpdate = (presence) => {
+      if (!presence || !activeConversation) return;
+      const partner = activeConversation.participants?.find(
+        (p) => (p._id || p) !== user?._id
+      );
+      const partnerId = (partner?._id || partner)?.toString();
+      if (presence.userId && presence.userId.toString() === partnerId) {
+        setPartnerPresence({
+          isOnline: Boolean(presence.isOnline),
+          lastSeen: presence.lastSeen || (presence.isOnline ? null : new Date()),
+        });
+      }
+    };
+
+    socket.on('receive_message', handleReceiveMessage);
+    socket.on('message_status_update', handleStatusUpdate);
+    socket.on('user_presence', handlePresenceUpdate);
+
+    return () => {
+      socket.off('receive_message', handleReceiveMessage);
+      socket.off('message_status_update', handleStatusUpdate);
+      socket.off('user_presence', handlePresenceUpdate);
+    };
+  }, [activeConversation?._id, user?._id]);
+
+  // Periodic background fallback sync for active conversation messages
   useEffect(() => {
     if (activeConversation?._id) {
       loadMessages(activeConversation._id);
@@ -182,7 +294,7 @@ export const Messages = ({ user }) => {
       if (!document.hidden) {
         fetchPresence();
       }
-    }, 8000);
+    }, 10000);
 
     return () => clearInterval(presenceTimer);
   }, [activeConversation, user?._id]);

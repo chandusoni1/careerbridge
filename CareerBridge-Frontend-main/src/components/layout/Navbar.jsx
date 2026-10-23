@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthContext, useTheme } from '../../stores';
 import { searchApi } from '../../services/search.api';
@@ -11,6 +11,7 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -18,7 +19,104 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
   const location = useLocation();
   const auth = useAuthContext();
   const user = propUser || auth.user;
-  const { theme, toggleTheme } = useTheme();
+  const { theme, themePreference, setThemePreference } = useTheme();
+
+  // Refs for Smart Menu outside-click detection
+  const navRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  const mobileToggleRef = useRef(null);
+  const notificationsRef = useRef(null);
+  const searchRef = useRef(null);
+  const themeMenuRef = useRef(null);
+
+  // Close menus on route navigation
+  useEffect(() => {
+    setIsOpen(false);
+    setShowNotifications(false);
+    setSearchResults(null);
+    setShowThemeMenu(false);
+  }, [location.pathname]);
+
+  // SMART MENU BEHAVIOR (Feature 2):
+  // 1. Toggles on button click
+  // 2. Closes on click outside
+  // 3. Closes on page scroll
+  // 4. Closes on Escape key press
+  // 5. Cleans up event listeners properly
+  useEffect(() => {
+    const hasOpenMenu =
+      isOpen || showNotifications || Boolean(searchResults) || showThemeMenu;
+
+    if (!hasOpenMenu) return;
+
+    const handleClickOutside = (e) => {
+      // Mobile menu outside click check (exclude toggle button to allow toggle)
+      if (
+        isOpen &&
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target) &&
+        mobileToggleRef.current &&
+        !mobileToggleRef.current.contains(e.target)
+      ) {
+        setIsOpen(false);
+      }
+
+      // Notifications dropdown outside click
+      if (
+        showNotifications &&
+        notificationsRef.current &&
+        !notificationsRef.current.contains(e.target)
+      ) {
+        setShowNotifications(false);
+      }
+
+      // Search results dropdown outside click
+      if (
+        searchResults &&
+        searchRef.current &&
+        !searchRef.current.contains(e.target)
+      ) {
+        setSearchResults(null);
+      }
+
+      // Theme menu dropdown outside click
+      if (
+        showThemeMenu &&
+        themeMenuRef.current &&
+        !themeMenuRef.current.contains(e.target)
+      ) {
+        setShowThemeMenu(false);
+      }
+    };
+
+    const handleScroll = () => {
+      if (isOpen) setIsOpen(false);
+      if (showNotifications) setShowNotifications(false);
+      if (searchResults) setSearchResults(null);
+      if (showThemeMenu) setShowThemeMenu(false);
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isOpen) setIsOpen(false);
+        if (showNotifications) setShowNotifications(false);
+        if (searchResults) setSearchResults(null);
+        if (showThemeMenu) setShowThemeMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, showNotifications, searchResults, showThemeMenu]);
 
   // Poll for notifications if logged in
   useEffect(() => {
@@ -33,7 +131,7 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
         ]);
         if (Array.isArray(list)) setNotifications(list);
         if (countRes) setUnreadCount(countRes.unreadCount || 0);
-      } catch (err) {
+      } catch {
         // Silent catch for background notification poll
       }
     };
@@ -92,40 +190,68 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
     { to: '/dashboard', label: 'Dashboard' },
   ];
 
+  const getThemeIcon = () => {
+    if (themePreference === 'system') return '💻';
+    if (themePreference === 'light') return '☀️';
+    return '🌙';
+  };
+
+  const getThemeLabel = () => {
+    if (themePreference === 'system') return `System (${theme === 'dark' ? 'Dark' : 'Light'})`;
+    if (themePreference === 'light') return 'Light';
+    return 'Dark';
+  };
+
   return (
-    <nav className="bg-slate-900 border-b border-slate-800 text-white px-4 md:px-8 py-3.5 sticky top-0 z-50 shadow-xl">
+    <nav
+      ref={navRef}
+      className="bg-slate-900 border-b border-slate-800 text-white px-4 md:px-8 py-3.5 sticky top-0 z-50 shadow-xl"
+    >
       <div className="max-w-7xl mx-auto flex justify-between items-center gap-4">
         {/* Logo */}
         <div className="font-extrabold text-2xl text-cyan-400 tracking-wider shrink-0">
           <Link to={user ? '/home' : '/login'}>CareerBridge 🚀</Link>
         </div>
 
-        {/* Global Search Bar (when user logged in) */}
+        {/* Global Live Search Bar */}
         {user && (
-          <div className="relative flex-1 max-w-xs md:max-w-md hidden sm:block">
-            <input
-              type="text"
-              placeholder="Search members, jobs, posts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-1.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-            />
+          <div ref={searchRef} className="relative flex-1 max-w-md hidden md:block">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search alumni, students, skills, jobs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 pl-9 bg-slate-950/80 border border-slate-800 rounded-2xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 shadow-inner"
+              />
+              <span className="absolute left-3 top-2.5 text-xs text-slate-500">
+                🔍
+              </span>
+              {isSearching && (
+                <span className="absolute right-3 top-2.5 text-xs text-cyan-400 animate-spin">
+                  ⏳
+                </span>
+              )}
+            </div>
 
-            {/* Instant Search Results Dropdown */}
+            {/* Search Results Dropdown */}
             {searchResults && (
-              <div className="absolute top-10 left-0 w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 space-y-3 z-50 max-h-80 overflow-y-auto">
+              <div className="absolute left-0 right-0 top-11 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-3 space-y-3 z-50 max-h-96 overflow-y-auto animate-fade-in">
                 {searchResults.users?.length > 0 && (
                   <div>
-                    <span className="text-[10px] font-black uppercase text-cyan-400 tracking-wider">
-                      Members
+                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                      People
                     </span>
-                    <div className="space-y-1 mt-1">
+                    <div className="mt-1 space-y-1">
                       {searchResults.users.map((u) => (
                         <Link
                           key={u._id}
                           to={`/profile/${u._id}`}
-                          onClick={() => setSearchQuery('')}
-                          className="flex items-center gap-2.5 p-2 hover:bg-slate-800 rounded-xl text-xs transition"
+                          onClick={() => {
+                            setSearchResults(null);
+                            setSearchQuery('');
+                          }}
+                          className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition text-xs"
                         >
                           <UserAvatar
                             src={u.profilePhoto}
@@ -133,10 +259,15 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
                             size="sm"
                           />
                           <div className="overflow-hidden">
-                            <span className="font-bold text-white block truncate">{u.name}</span>
-                            <span className="text-slate-400 text-[11px] block truncate">
-                              {u.headline || `${u.role ? u.role.toUpperCase() : 'Member'} • ${u.company || u.college || 'CareerBridge'}`}
-                            </span>
+                            <div className="font-bold text-white truncate flex items-center gap-1">
+                              <span>{u.name}</span>
+                              <span className="text-[10px] font-medium text-cyan-400 bg-cyan-500/10 px-1.5 py-0.2 rounded">
+                                {u.role}
+                              </span>
+                            </div>
+                            <div className="text-slate-400 text-[11px] truncate">
+                              {u.headline || u.company || u.college || 'CareerBridge Member'}
+                            </div>
                           </div>
                         </Link>
                       ))}
@@ -145,17 +276,20 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
                 )}
 
                 {searchResults.jobs?.length > 0 && (
-                  <div>
-                    <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider">
-                      Jobs
+                  <div className="pt-2 border-t border-slate-800">
+                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                      Jobs & Referrals
                     </span>
-                    <div className="space-y-1 mt-1">
+                    <div className="mt-1 space-y-1">
                       {searchResults.jobs.map((j) => (
                         <Link
                           key={j._id}
                           to="/jobs"
-                          onClick={() => setSearchQuery('')}
-                          className="flex items-center gap-2.5 p-2 hover:bg-slate-800 rounded-xl text-xs transition"
+                          onClick={() => {
+                            setSearchResults(null);
+                            setSearchQuery('');
+                          }}
+                          className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition text-xs"
                         >
                           <UserAvatar
                             src={j.postedBy?.profilePhoto}
@@ -172,7 +306,7 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
                   </div>
                 )}
 
-                {(!searchResults.users?.length && !searchResults.jobs?.length) && (
+                {!searchResults.users?.length && !searchResults.jobs?.length && (
                   <div className="text-slate-500 text-xs py-2 text-center">
                     No results found for "{searchQuery}"
                   </div>
@@ -201,11 +335,12 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
               ))}
 
               {/* Notifications Toggle */}
-              <div className="relative">
+              <div ref={notificationsRef} className="relative">
                 <button
-                  onClick={() => setShowNotifications(!showNotifications)}
+                  onClick={() => setShowNotifications((prev) => !prev)}
                   className="relative p-2 text-slate-300 hover:text-cyan-400 transition cursor-pointer"
                   title="Notifications"
+                  aria-label="Toggle notifications menu"
                 >
                   🔔
                   {unreadCount > 0 && (
@@ -217,13 +352,13 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
 
                 {/* Notifications Dropdown */}
                 {showNotifications && (
-                  <div className="absolute right-0 top-10 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 space-y-3 z-50">
+                  <div className="absolute right-0 top-10 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-4 space-y-3 z-50 animate-fade-in">
                     <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                       <span className="text-xs font-black text-white">Notifications</span>
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllRead}
-                          className="text-[10px] text-cyan-400 font-bold hover:underline"
+                          className="text-[10px] text-cyan-400 font-bold hover:underline cursor-pointer"
                         >
                           Mark all as read
                         </button>
@@ -299,33 +434,92 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
             </div>
           )}
 
-          {/* Theme Toggle Button (Light / Dark) */}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-slate-700/60 transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
-            title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-            aria-label={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-          >
-            {theme === 'dark' ? (
-              <>
-                <span className="text-sm">☀️</span>
-                <span className="hidden xl:inline text-[11px] text-slate-300 font-bold">Light</span>
-              </>
-            ) : (
-              <>
-                <span className="text-sm">🌙</span>
-                <span className="hidden xl:inline text-[11px] text-slate-700 font-bold">Dark</span>
-              </>
+          {/* Feature 6: Theme Selector (System Default / Light / Dark) */}
+          <div ref={themeMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setShowThemeMenu((prev) => !prev)}
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-slate-700/60 transition cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+              title={`Current Theme: ${getThemeLabel()}. Click to change.`}
+              aria-label="Theme selector"
+            >
+              <span className="text-sm">{getThemeIcon()}</span>
+              <span className="hidden xl:inline text-[11px] text-slate-300 font-bold">
+                {themePreference === 'system' ? 'System' : themePreference === 'light' ? 'Light' : 'Dark'}
+              </span>
+              <span className="text-[10px] text-slate-400">▾</span>
+            </button>
+
+            {/* Theme Selector Dropdown Menu */}
+            {showThemeMenu && (
+              <div className="absolute right-0 top-11 w-44 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-1.5 z-50 space-y-1 animate-fade-in text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThemePreference('system');
+                    setShowThemeMenu(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition cursor-pointer ${
+                    themePreference === 'system'
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>💻</span>
+                    <span>System Default</span>
+                  </span>
+                  {themePreference === 'system' && <span>✓</span>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThemePreference('light');
+                    setShowThemeMenu(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition cursor-pointer ${
+                    themePreference === 'light'
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>☀️</span>
+                    <span>Light Mode</span>
+                  </span>
+                  {themePreference === 'light' && <span>✓</span>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setThemePreference('dark');
+                    setShowThemeMenu(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition cursor-pointer ${
+                    themePreference === 'dark'
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>🌙</span>
+                    <span>Dark Mode</span>
+                  </span>
+                  {themePreference === 'dark' && <span>✓</span>}
+                </button>
+              </div>
             )}
-          </button>
+          </div>
         </div>
 
-        {/* Mobile Toggle */}
+        {/* Mobile Menu Toggle Button */}
         <button
-          className="lg:hidden text-cyan-400 p-1 cursor-pointer"
-          onClick={() => setIsOpen(!isOpen)}
-          aria-label="Toggle Menu"
+          ref={mobileToggleRef}
+          className="lg:hidden text-cyan-400 p-1 cursor-pointer focus:outline-none"
+          onClick={() => setIsOpen((prev) => !prev)}
+          aria-label="Toggle Navigation Menu"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {isOpen ? (
@@ -337,9 +531,12 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
         </button>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Menu (Smart open/close) */}
       {isOpen && (
-        <div className="lg:hidden mt-3 pt-3 border-t border-slate-800 space-y-2 text-xs font-bold text-slate-300">
+        <div
+          ref={mobileMenuRef}
+          className="lg:hidden mt-3 pt-3 border-t border-slate-800 space-y-2 text-xs font-bold text-slate-300 animate-fade-in"
+        >
           {user ? (
             <>
               {navLinks.map((link) => (
@@ -369,7 +566,7 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="px-3 py-1 bg-rose-600 text-white rounded-lg text-xs font-bold"
+                  className="px-3 py-1 bg-rose-600 text-white rounded-lg text-xs font-bold cursor-pointer"
                 >
                   Logout
                 </button>
@@ -394,16 +591,58 @@ export const Navbar = ({ user: propUser, setUser: propSetUser }) => {
             </div>
           )}
 
-          {/* Mobile Theme Toggle */}
-          <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-            <span className="text-slate-400 text-xs">Theme: {theme === 'dark' ? 'Dark Mode 🌙' : 'Light Mode ☀️'}</span>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 text-amber-300 font-bold text-xs flex items-center gap-1.5"
-            >
-              {theme === 'dark' ? '☀️ Switch to Light' : '🌙 Switch to Dark'}
-            </button>
+          {/* Mobile Theme Selector (System / Light / Dark) */}
+          <div className="pt-2.5 border-t border-slate-800 space-y-1.5">
+            <span className="text-slate-400 text-[11px] block">
+              Appearance Theme: <span className="text-cyan-400 font-bold">{getThemeLabel()}</span>
+            </span>
+            <div className="grid grid-cols-3 gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setThemePreference('system');
+                  setIsOpen(false);
+                }}
+                className={`py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition ${
+                  themePreference === 'system'
+                    ? 'bg-cyan-500 text-slate-950'
+                    : 'bg-slate-800 text-slate-300 hover:text-white'
+                }`}
+              >
+                <span>💻</span>
+                <span>System</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setThemePreference('light');
+                  setIsOpen(false);
+                }}
+                className={`py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition ${
+                  themePreference === 'light'
+                    ? 'bg-cyan-500 text-slate-950'
+                    : 'bg-slate-800 text-slate-300 hover:text-white'
+                }`}
+              >
+                <span>☀️</span>
+                <span>Light</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setThemePreference('dark');
+                  setIsOpen(false);
+                }}
+                className={`py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition ${
+                  themePreference === 'dark'
+                    ? 'bg-cyan-500 text-slate-950'
+                    : 'bg-slate-800 text-slate-300 hover:text-white'
+                }`}
+              >
+                <span>🌙</span>
+                <span>Dark</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

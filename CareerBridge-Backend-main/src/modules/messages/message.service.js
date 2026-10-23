@@ -121,10 +121,7 @@ const getUserPresence = async (targetUserId) => {
     throw ApiError.notFound('User not found');
   }
 
-  const socketOnline = isUserOnline ? isUserOnline(targetUserId) : false;
-  const recentHttp =
-    user.lastSeen && Date.now() - new Date(user.lastSeen).getTime() < 45000;
-  const isOnline = Boolean(socketOnline || recentHttp);
+  const isOnline = isUserOnline ? isUserOnline(targetUserId) : false;
 
   return {
     userId: targetUserId,
@@ -139,14 +136,50 @@ const markMessageDelivered = async (messageId, receiverId) => {
     { $set: { status: 'delivered', deliveredAt: new Date() } },
     { new: true }
   );
+
+  if (updated && updated.sender) {
+    try {
+      const { getIo } = require('../../services/socket.service');
+      const io = getIo();
+      io.to(updated.sender.toString()).emit('message_status_update', {
+        messageId: updated._id,
+        conversationId: updated.conversationId,
+        status: 'delivered',
+        deliveredAt: updated.deliveredAt,
+      });
+    } catch {}
+  }
+
   return updated;
 };
 
 const markConversationRead = async (conversationId, userId) => {
+  const unreadMessages = await Message.find({
+    conversationId,
+    receiver: userId,
+    status: { $ne: 'read' },
+  }).select('_id sender');
+
   await Message.updateMany(
     { conversationId, receiver: userId, status: { $ne: 'read' } },
     { $set: { status: 'read', isRead: true, readAt: new Date() } }
   );
+
+  if (unreadMessages.length > 0) {
+    try {
+      const { getIo } = require('../../services/socket.service');
+      const io = getIo();
+      const senders = new Set(unreadMessages.map((m) => m.sender.toString()));
+      senders.forEach((senderId) => {
+        io.to(senderId).emit('message_status_update', {
+          conversationId,
+          status: 'read',
+          readAt: new Date(),
+        });
+      });
+    } catch {}
+  }
+
   return { success: true };
 };
 

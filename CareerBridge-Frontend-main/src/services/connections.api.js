@@ -6,6 +6,10 @@ export const connectionsApi = {
     return apiClient.get('/directory/summary');
   },
 
+  getStatus: async (targetUserId) => {
+    return apiClient.get(`/directory/status/${targetUserId}`);
+  },
+
   sendRequest: async (receiverId) => {
     const user = storage.getUser();
     return apiClient.post('/directory/connect/request', {
